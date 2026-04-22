@@ -35,8 +35,8 @@ function requireDb() {
   try {
     return require('./db.js').getDb();
   } catch (e) {
-    if (e.message && e.message.includes('better-sqlite3')) {
-      console.error('Error: native module not built. Run: npm rebuild better-sqlite3');
+    if (e.message && e.message.includes('node:sqlite')) {
+      console.error('Error: node:sqlite requires Node.js >= 22.5.0');
     } else {
       console.error('Database error:', e.message);
     }
@@ -170,12 +170,21 @@ const commands = {
     const db = requireDb();
 
     if (flags.has('--all')) {
+      const { clearAll } = require('./memory/episodic.js');
+      if (flags.has('--yes') || flags.has('-y')) {
+        clearAll(db);
+        console.log('All memories deleted.');
+        return;
+      }
+      if (!process.stdin.isTTY) {
+        console.error('Error: --all requires confirmation. Use --yes in non-interactive mode.');
+        process.exit(1);
+      }
       const readline = require('readline');
       const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
       rl.question('Delete ALL memories? This cannot be undone. Type "yes" to confirm: ', answer => {
         rl.close();
         if (answer.trim().toLowerCase() === 'yes') {
-          const { clearAll } = require('./memory/episodic.js');
           clearAll(db);
           console.log('All memories deleted.');
         } else {
@@ -186,7 +195,7 @@ const commands = {
     }
 
     const id = parseInt(args[1], 10);
-    if (!id || isNaN(id)) {
+    if (!id || isNaN(id) || id <= 0) {
       console.error('Usage: claude-reforge forget <id>  |  claude-reforge forget --all');
       process.exit(1);
     }
@@ -361,7 +370,7 @@ COMMANDS
   uninstall           Remove hooks from Claude Code settings
 
 INSTALL
-  npm install -g claude-reforge
+  npm install -g @ccplug/claude-reforge
   claude-reforge init
 
 HOW IT WORKS

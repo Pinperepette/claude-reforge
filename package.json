@@ -1,6 +1,6 @@
 {
   "name": "@ccplug/claude-reforge",
-  "version": "1.0.1",
+  "version": "1.0.0-beta.1",
   "description": "Persistent memory and learning for Claude Code — remembers errors, solutions, and patterns across sessions",
   "bin": {
     "claude-reforge": "./bin/claude-reforge"

@@ -38,7 +38,9 @@ function readSettings() {
 function writeSettings(settings) {
   const dir = path.dirname(SETTINGS_PATH);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2));
+  const tmp = `${SETTINGS_PATH}.tmp.${process.pid}`;
+  fs.writeFileSync(tmp, JSON.stringify(settings, null, 2));
+  fs.renameSync(tmp, SETTINGS_PATH);
 }
 
 // Matches any command that points to one of our hook files

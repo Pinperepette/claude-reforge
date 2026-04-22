@@ -101,6 +101,8 @@ function detectProjectFolders(session) {
   return [...folderSet].slice(0, 10);
 }
 
+let _sessionId = null;
+
 async function main() {
   let input = {};
   try {
@@ -113,7 +115,8 @@ async function main() {
     return;
   }
 
-  const { session_id, transcript_path, last_assistant_message } = input;
+  const { session_id, transcript_path } = input;
+  _sessionId = session_id;
 
   try {
     const session = loadSession(session_id);
@@ -186,6 +189,6 @@ function exit() {
 
 main().catch(e => {
   try { logError(e); } catch (_) {}
-  try { deleteSession(process.env.SESSION_ID); } catch (_) {}
+  try { if (_sessionId) deleteSession(_sessionId); } catch (_) {}
   exit();
 });
