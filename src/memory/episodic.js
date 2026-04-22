@@ -9,18 +9,19 @@ function saveEpisode(db, ep) {
 
   return db.prepare(`
     INSERT INTO episodes
-      (task, context, actions, error, solution, outcome, importance, keywords, project_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (task, context, actions, error, solution, outcome, importance, keywords, project_id, tried_actions)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
-    ep.task     || 'unknown task',
-    ep.context  || null,
-    JSON.stringify(ep.actions || []),
-    ep.error    || null,
-    ep.solution || null,
-    ep.outcome  || 'unknown',
+    ep.task          || 'unknown task',
+    ep.context       || null,
+    JSON.stringify(ep.actions       || []),
+    ep.error         || null,
+    ep.solution      || null,
+    ep.outcome       || 'unknown',
     ep.importance !== undefined ? ep.importance : 0.5,
     JSON.stringify(keywords),
-    ep.projectId || null
+    ep.projectId     || null,
+    JSON.stringify(ep.triedActions  || [])
   ).lastInsertRowid;
 }
 

@@ -3,11 +3,10 @@
 
 // Hook: PostToolUse
 // Fires after every tool call completes.
-// Captures errors from Bash output, confirms file changes, tracks commands.
+// Captures errors from Bash output, confirms file changes, tracks tried actions.
 
 const { logError, loadSession, saveSession } = require('../db.js');
 
-// Patterns that signal real errors (not noise)
 const ERROR_RE = [
   /\b(?:Error|error|ERROR)[:\s][^\n]{10,200}/g,
   /\b(?:Exception|EXCEPTION)[:\s][^\n]{10,200}/g,
@@ -24,15 +23,14 @@ const ERROR_RE = [
   /ETIMEDOUT:[^\n]{5,180}/g,
   /EACCES:[^\n]{5,180}/g,
   /npm ERR![^\n]{5,180}/g,
-  /error TS\d+:[^\n]{5,180}/g,        // TypeScript errors
+  /error TS\d+:[^\n]{5,180}/g,
   /compilation failed/gi,
   /build failed/gi,
   /assert(?:ion)? failed[^\n]{0,150}/gi,
-  /panic:[^\n]{5,180}/g,              // Go/Rust panics
+  /panic:[^\n]{5,180}/g,
   /thread '.*' panicked[^\n]{0,150}/g,
 ];
 
-// Signals that indicate the previous errors were resolved
 const SUCCESS_RE = /(?:success|✓|done|passed|completed|ok|green|0 errors|all tests)/i;
 
 function extractErrors(text) {
@@ -57,6 +55,23 @@ function responseToText(toolResponse) {
       .slice(0, 8000);
   }
   try { return JSON.stringify(toolResponse).slice(0, 4000); } catch (_) { return ''; }
+}
+
+// Describe what was attempted — used for negative memory (what didn't work)
+function getTriedHint(toolName, toolInput) {
+  if (!toolInput) return null;
+  if (toolName === 'Edit' || toolName === 'Write') {
+    const fname = (toolInput.file_path || '').split('/').pop();
+    return fname ? `edited ${fname}` : null;
+  }
+  if (toolName === 'MultiEdit') {
+    const files = (toolInput.edits || []).map(e => (e.file_path || '').split('/').pop()).filter(Boolean);
+    return files.length > 0 ? `edited ${files.join(', ')}` : null;
+  }
+  if (toolName === 'Bash' && toolInput.command) {
+    return toolInput.command.slice(0, 60);
+  }
+  return null;
 }
 
 async function main() {
@@ -91,12 +106,11 @@ async function main() {
         session.errors = [...new Set(session.errors)].slice(0, 10);
         session.lastErrorTool = tool_name;
       } else if (text && SUCCESS_RE.test(text) && session.errors.length > 0) {
-        // Successful output after errors → likely resolved
         session.errorsResolved = true;
       }
     }
 
-    // Confirm file changes after successful write
+    // Track file changes
     if (['Edit', 'Write', 'MultiEdit'].includes(tool_name) && tool_input) {
       let files = [];
       if (tool_name === 'MultiEdit') {
@@ -106,6 +120,15 @@ async function main() {
       }
       for (const f of files) {
         if (!session.fileChanges.includes(f)) session.fileChanges.push(f);
+      }
+    }
+
+    // Record what was tried while errors were active and unresolved (negative memory)
+    if (session.errors.length > 0 && !session.errorsResolved) {
+      const hint = getTriedHint(tool_name, tool_input);
+      if (hint) {
+        if (!session.triedActions) session.triedActions = [];
+        if (!session.triedActions.includes(hint)) session.triedActions.push(hint);
       }
     }
 

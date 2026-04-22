@@ -121,13 +121,14 @@ async function main() {
 
       saveEpisode(db, {
         task,
-        context:    session.projectPath,
-        actions:    session.actions.map(a => a.hint || a.tool).filter(Boolean).slice(0, 20),
+        context:      session.projectPath,
+        actions:      session.actions.map(a => a.hint || a.tool).filter(Boolean).slice(0, 20),
         error,
         solution,
         outcome,
         importance,
-        projectId:  session.projectId
+        projectId:    session.projectId,
+        triedActions: session.triedActions || []
       });
 
       // Update project facts: file types used

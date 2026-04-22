@@ -76,10 +76,9 @@ function getDb() {
     CREATE INDEX IF NOT EXISTS idx_inj_time      ON injections(created_at);
   `);
 
-  // Safe migration for existing databases (adds hit_count if missing)
-  try {
-    _db.exec('ALTER TABLE episodes ADD COLUMN hit_count INTEGER DEFAULT 0');
-  } catch (_) {}
+  // Safe migrations for existing databases
+  try { _db.exec('ALTER TABLE episodes ADD COLUMN hit_count INTEGER DEFAULT 0'); } catch (_) {}
+  try { _db.exec("ALTER TABLE episodes ADD COLUMN tried_actions TEXT DEFAULT '[]'"); } catch (_) {}
   try {
     _db.exec('CREATE TABLE IF NOT EXISTS injections (id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT NOT NULL, project_id TEXT, episodes_hit TEXT DEFAULT "[]", rules_hit TEXT DEFAULT "[]", errors_in_eps INTEGER DEFAULT 0, solutions_in_eps INTEGER DEFAULT 0, created_at INTEGER DEFAULT (unixepoch()))');
   } catch (_) {}
