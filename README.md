@@ -57,7 +57,7 @@ It's experience.
 ## Quick Start
 
 ```bash
-npm install -g @ccplug/claude-reforge
+npm install -g github:Pinperepette/claude-reforge
 claude-reforge init
 ```
 
@@ -142,13 +142,15 @@ Session ends
 
 No embeddings. No API calls. No external dependencies.
 
-Retrieval is BM25 keyword search on episode text (task + error + solution).
-Each result is weighted by importance score. Top 3 episodes + top 3 rules are injected.
+Retrieval uses a **composite score**: BM25 keyword match × time decay × importance × outcome weight × reuse bonus × project affinity. Top 3 episodes + top 3 rules are injected.
 
-The importance score factors in:
-- Error resolved → high value
-- Complex task (many actions, many files) → medium value
-- Repeated failure → medium value
+Score factors:
+- **BM25** — keyword relevance between query and episode text
+- **Time decay** — recent memories score higher (1.0 → 0.25 over 6 months)
+- **Outcome** — resolved errors score 1.2×, known failures 0.75× (still injected as negative examples)
+- **Reuse** — episodes used before score higher
+- **Project affinity** — same-project episodes score 1.3×, cross-project 0.85×
+- **Confidence** — rules below 0.5 confidence are never injected
 
 ### Storage
 
@@ -156,7 +158,7 @@ Everything lives at `~/.claude-reforge/`:
 
 ```
 ~/.claude-reforge/
-├── memory.db          SQLite database (episodes, rules, facts)
+├── memory.db          SQLite database (Node.js built-in, no compilation)
 └── sessions/          Temporary session state (deleted after Stop hook)
     └── {session_id}.json
 ```
@@ -164,7 +166,7 @@ Everything lives at `~/.claude-reforge/`:
 Database tables:
 
 ```sql
-episodes       task, error, solution, outcome, importance, hit_count
+episodes       task, error, tried_actions, solution, outcome, importance, hit_count
 semantic_facts project-scoped key/value facts
 rules          condition → action, confidence, hit_count
 injections     audit log of every memory injection (for stats)
@@ -176,24 +178,24 @@ injections     audit log of every memory injection (for stats)
 
 ### Requirements
 
-- Node.js ≥ 18
+- Node.js ≥ 22.5
 - Claude Code CLI
-- macOS / Linux (Windows: untested)
+- macOS / Linux / Windows
 
-> `better-sqlite3` requires native compilation. On macOS this works out of the box.
-> On Linux, install build tools first: `apt-get install python3 make g++`
-
-### From npm (recommended)
-
-```bash
-npm install -g @ccplug/claude-reforge
-claude-reforge init
-```
+No native compilation. No build tools. No dependencies.
+Uses the SQLite engine built into Node.js itself.
 
 ### From GitHub
 
 ```bash
 npm install -g github:Pinperepette/claude-reforge
+claude-reforge init
+```
+
+### From npm
+
+```bash
+npm install -g @ccplug/claude-reforge
 claude-reforge init
 ```
 
