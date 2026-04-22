@@ -1,8 +1,18 @@
 # Claude Reforge
 
-![Claude Reforge](https://raw.githubusercontent.com/Pinperepette/claude-reforge/main/assets/banner.png)
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Pinperepette/claude-reforge/main/assets/banner.png" alt="Claude Reforge" width="100%" />
+</p>
 
-**Built specifically for Claude Code.**
+<p align="center">
+  <a href="https://www.npmjs.com/package/@ccplug/claude-reforge"><img src="https://img.shields.io/npm/v/@ccplug/claude-reforge?color=7c3aed&style=flat-square&label=npm" alt="npm" /></a>
+  <img src="https://img.shields.io/badge/license-MIT-2563eb?style=flat-square" alt="license" />
+  <img src="https://img.shields.io/badge/node-%3E%3D18-green?style=flat-square" alt="node" />
+  <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey?style=flat-square" alt="platform" />
+  <img src="https://img.shields.io/badge/storage-local%20SQLite-orange?style=flat-square" alt="storage" />
+</p>
+
+<p align="center"><strong>Built specifically for Claude Code.</strong></p>
 
 ---
 
@@ -35,12 +45,12 @@ It's experience.
 
 ## Without vs With
 
-| Without Claude Reforge | With Claude Reforge |
-|------------------------|---------------------|
-| Repeats the same debugging paths | Reuses proven fixes instantly |
-| Tries fixes that already failed | Avoids known bad paths |
-| No memory of what worked in your project | Knows your project's history |
-| Same speed on day 1 and day 100 | Gets faster every session |
+| | Without Claude Reforge | With Claude Reforge |
+|--|------------------------|---------------------|
+| **Debugging** | Repeats the same paths | Reuses proven fixes instantly |
+| **Known failures** | Tries fixes that already failed | Avoids known bad paths |
+| **Project knowledge** | Resets every session | Knows your project's history |
+| **Speed** | Same on day 1 and day 100 | Gets faster every session |
 
 ---
 
@@ -183,7 +193,7 @@ claude-reforge init
 ### From GitHub
 
 ```bash
-npm install -g github:ccplug/claude-reforge
+npm install -g github:Pinperepette/claude-reforge
 claude-reforge init
 ```
 
