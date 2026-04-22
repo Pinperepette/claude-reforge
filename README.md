@@ -1,6 +1,6 @@
 # Claude Reforge
 
-![Claude Reforge](https://raw.githubusercontent.com/Pinperepette/claude-reforge/main/assets/banner.svg)
+![Claude Reforge](https://raw.githubusercontent.com/Pinperepette/claude-reforge/main/assets/banner.png)
 
 **Built specifically for Claude Code.**
 
