@@ -59,7 +59,7 @@ function install() {
   let added = 0;
   for (const [event, file] of Object.entries(HOOK_MAP)) {
     const hookPath = path.join(HOOK_DIR, file);
-    const command = `node "${hookPath}"`;
+    const command = `NODE_NO_WARNINGS=1 node "${hookPath}"`;
 
     if (!settings.hooks[event]) settings.hooks[event] = [];
 

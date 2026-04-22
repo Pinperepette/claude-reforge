@@ -1,13 +1,13 @@
 'use strict';
 
 const path = require('path');
-const os = require('os');
-const fs = require('fs');
+const os   = require('os');
+const fs   = require('fs');
 
-const DATA_DIR = path.join(os.homedir(), '.claude-reforge');
+const DATA_DIR    = path.join(os.homedir(), '.claude-reforge');
 const SESSIONS_DIR = path.join(DATA_DIR, 'sessions');
-const DB_PATH = path.join(DATA_DIR, 'memory.db');
-const ERROR_LOG = path.join(DATA_DIR, 'error.log');
+const DB_PATH     = path.join(DATA_DIR, 'memory.db');
+const ERROR_LOG   = path.join(DATA_DIR, 'error.log');
 
 function ensureDirs() {
   for (const dir of [DATA_DIR, SESSIONS_DIR]) {
@@ -21,10 +21,12 @@ function getDb() {
   if (_db) return _db;
   ensureDirs();
 
-  const Database = require('better-sqlite3');
-  _db = new Database(DB_PATH);
-  _db.pragma('journal_mode = WAL');
-  _db.pragma('synchronous = NORMAL');
+  // node:sqlite — built into Node.js 22.5+, no native compilation needed
+  const { DatabaseSync } = require('node:sqlite');
+  _db = new DatabaseSync(DB_PATH);
+
+  _db.exec('PRAGMA journal_mode=WAL');
+  _db.exec('PRAGMA synchronous=NORMAL');
 
   _db.exec(`
     CREATE TABLE IF NOT EXISTS episodes (
@@ -34,6 +36,7 @@ function getDb() {
       actions     TEXT    DEFAULT '[]',
       error       TEXT,
       solution    TEXT,
+      tried_actions TEXT  DEFAULT '[]',
       outcome     TEXT    DEFAULT 'unknown',
       importance  REAL    DEFAULT 0.5,
       keywords    TEXT    DEFAULT '[]',
@@ -60,14 +63,14 @@ function getDb() {
       created_at       INTEGER DEFAULT (unixepoch())
     );
     CREATE TABLE IF NOT EXISTS injections (
-      id              INTEGER PRIMARY KEY AUTOINCREMENT,
-      session_id      TEXT    NOT NULL,
-      project_id      TEXT,
-      episodes_hit    TEXT    DEFAULT '[]',
-      rules_hit       TEXT    DEFAULT '[]',
-      errors_in_eps   INTEGER DEFAULT 0,
+      id               INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_id       TEXT    NOT NULL,
+      project_id       TEXT,
+      episodes_hit     TEXT    DEFAULT '[]',
+      rules_hit        TEXT    DEFAULT '[]',
+      errors_in_eps    INTEGER DEFAULT 0,
       solutions_in_eps INTEGER DEFAULT 0,
-      created_at      INTEGER DEFAULT (unixepoch())
+      created_at       INTEGER DEFAULT (unixepoch())
     );
     CREATE INDEX IF NOT EXISTS idx_ep_project    ON episodes(project_id);
     CREATE INDEX IF NOT EXISTS idx_ep_importance ON episodes(importance DESC);
@@ -76,12 +79,10 @@ function getDb() {
     CREATE INDEX IF NOT EXISTS idx_inj_time      ON injections(created_at);
   `);
 
-  // Safe migrations for existing databases
-  try { _db.exec('ALTER TABLE episodes ADD COLUMN hit_count INTEGER DEFAULT 0'); } catch (_) {}
-  try { _db.exec("ALTER TABLE episodes ADD COLUMN tried_actions TEXT DEFAULT '[]'"); } catch (_) {}
-  try {
-    _db.exec('CREATE TABLE IF NOT EXISTS injections (id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT NOT NULL, project_id TEXT, episodes_hit TEXT DEFAULT "[]", rules_hit TEXT DEFAULT "[]", errors_in_eps INTEGER DEFAULT 0, solutions_in_eps INTEGER DEFAULT 0, created_at INTEGER DEFAULT (unixepoch()))');
-  } catch (_) {}
+  // Safe migrations for databases created before schema updates
+  const safeAlter = (sql) => { try { _db.exec(sql); } catch (_) {} };
+  safeAlter('ALTER TABLE episodes ADD COLUMN hit_count INTEGER DEFAULT 0');
+  safeAlter("ALTER TABLE episodes ADD COLUMN tried_actions TEXT DEFAULT '[]'");
 
   return _db;
 }
@@ -129,12 +130,13 @@ function createSession(sessionId, projectId, projectPath) {
     sessionId,
     projectId,
     projectPath,
-    startTime: Date.now(),
-    task: '',
-    actions: [],
-    fileChanges: [],
-    commands: [],
-    errors: [],
+    startTime:     Date.now(),
+    task:          '',
+    actions:       [],
+    fileChanges:   [],
+    commands:      [],
+    errors:        [],
+    triedActions:  [],
     injectedMemory: false
   };
   saveSession(session);

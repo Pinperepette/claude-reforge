@@ -1,6 +1,6 @@
 {
   "name": "@ccplug/claude-reforge",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Persistent memory and learning for Claude Code — remembers errors, solutions, and patterns across sessions",
   "bin": {
     "claude-reforge": "./bin/claude-reforge"
@@ -10,14 +10,12 @@
     "src/",
     "assets/"
   ],
-  "dependencies": {
-    "better-sqlite3": "^9.4.3"
-  },
+  "dependencies": {},
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=22.5.0"
   },
   "scripts": {
-    "postinstall": "node -e \"console.log('\\n  ✓ claude-reforge installed\\n  Run: claude-reforge init\\n')\" || true"
+    "postinstall": "node -e \"console.log('\\n  claude-reforge installed — run: claude-reforge init\\n')\" || true"
   },
   "license": "MIT",
   "keywords": [
@@ -34,10 +32,10 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/ccplug/claude-reforge"
+    "url": "https://github.com/Pinperepette/claude-reforge"
   },
   "bugs": {
-    "url": "https://github.com/ccplug/claude-reforge/issues"
+    "url": "https://github.com/Pinperepette/claude-reforge/issues"
   },
-  "homepage": "https://github.com/ccplug/claude-reforge#readme"
+  "homepage": "https://github.com/Pinperepette/claude-reforge#readme"
 }
