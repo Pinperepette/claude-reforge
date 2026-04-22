@@ -88,6 +88,19 @@ function detectProjectStack(session) {
     .slice(0, 5);
 }
 
+function detectProjectFolders(session) {
+  const base = (session.projectPath || '').replace(/\/$/, '');
+  const folderSet = new Set();
+  for (const f of session.fileChanges) {
+    let rel = f;
+    if (base && f.startsWith(base + '/')) rel = f.slice(base.length + 1);
+    const parts = rel.split('/');
+    if (parts.length > 1) folderSet.add(parts[0]);
+    if (parts.length > 2) folderSet.add(parts[0] + '/' + parts[1]);
+  }
+  return [...folderSet].slice(0, 10);
+}
+
 async function main() {
   let input = {};
   try {
@@ -125,6 +138,7 @@ async function main() {
       const error     = session.errors.length > 0 ? session.errors[0] : null;
       const solution  = deriveSolution(session, outcome);
       const fileTypes = detectProjectStack(session);
+      const folders   = detectProjectFolders(session);
       const importance = scoreEpisode({ ...session, solution, outcome });
 
       saveEpisode(db, {
@@ -137,12 +151,16 @@ async function main() {
         importance,
         projectId:    session.projectId,
         triedActions: session.triedActions || [],
-        fileTypes
+        fileTypes,
+        folders
       });
 
-      // Update project facts: file types used
+      // Update project facts: file types and folders used
       if (fileTypes.length > 0) {
         saveFact(db, 'primary_file_types', fileTypes.join(', '), session.projectId);
+      }
+      if (folders.length > 0) {
+        saveFact(db, 'primary_folders', folders.join(', '), session.projectId);
       }
 
       // Run rule extraction after saving

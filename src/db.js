@@ -87,6 +87,7 @@ function getDb() {
   safeAlter("ALTER TABLE episodes ADD COLUMN seen_count INTEGER DEFAULT 1");
   safeAlter("ALTER TABLE episodes ADD COLUMN file_types TEXT DEFAULT '[]'");
   safeAlter("ALTER TABLE episodes ADD COLUMN bad_hit_count INTEGER DEFAULT 0");
+  safeAlter("ALTER TABLE episodes ADD COLUMN folders TEXT DEFAULT '[]'");
   safeAlter('CREATE INDEX IF NOT EXISTS idx_ep_error_sig ON episodes(error_sig, project_id)');
 
   return _db;

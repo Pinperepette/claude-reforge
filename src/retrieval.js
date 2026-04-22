@@ -77,9 +77,24 @@ function languageScore(epFileTypes, projectTypes) {
   return overlap ? 1.0 : 0.3;
 }
 
+// Folder affinity: boost same-folder episodes, lightly penalize cross-folder
+function folderScore(epFolders, projectFolders) {
+  if (projectFolders.size === 0 || epFolders.length === 0) return 1.0;
+  const overlap = epFolders.some(f => projectFolders.has(f));
+  return overlap ? 1.1 : 0.7;
+}
+
 function getProjectFileTypes(db, projectId) {
   const fact = db.prepare(
     "SELECT fact_value FROM semantic_facts WHERE fact_key = 'primary_file_types' AND project_id = ?"
+  ).get(projectId);
+  if (!fact) return new Set();
+  return new Set(fact.fact_value.split(',').map(s => s.trim()).filter(Boolean));
+}
+
+function getProjectFolders(db, projectId) {
+  const fact = db.prepare(
+    "SELECT fact_value FROM semantic_facts WHERE fact_key = 'primary_folders' AND project_id = ?"
   ).get(projectId);
   if (!fact) return new Set();
   return new Set(fact.fact_value.split(',').map(s => s.trim()).filter(Boolean));
@@ -90,6 +105,7 @@ function retrieveRelevant(db, query, projectId, limit = 4) {
   if (qKws.length === 0) return { episodes: [], rules: [] };
 
   const currentFileTypes = getProjectFileTypes(db, projectId);
+  const currentFolders   = getProjectFolders(db, projectId);
 
   const episodes = db.prepare(`
     SELECT * FROM episodes
@@ -105,9 +121,11 @@ function retrieveRelevant(db, query, projectId, limit = 4) {
       const kws      = [...new Set([...stored, ...derived])];
       const bm25     = bm25Score(kws, qKws);
       if (bm25 === 0) return null;
-      const epTypes  = tryParse(ep.file_types, []);
-      const langW    = languageScore(epTypes, currentFileTypes);
-      return { ...ep, _score: compositeScore(bm25, ep, ep.project_id === projectId) * langW };
+      const epTypes   = tryParse(ep.file_types, []);
+      const epFolders = tryParse(ep.folders, []);
+      const langW     = languageScore(epTypes, currentFileTypes);
+      const folderW   = folderScore(epFolders, currentFolders);
+      return { ...ep, _score: compositeScore(bm25, ep, ep.project_id === projectId) * langW * folderW };
     })
     .filter(Boolean)
     .sort((a, b) => b._score - a._score)

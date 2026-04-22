@@ -142,7 +142,7 @@ Session ends
 
 No embeddings. No API calls. No external dependencies.
 
-Retrieval uses a **composite score**: BM25 keyword match × time decay × importance × outcome weight × reuse bonus × project affinity. Top 3 episodes + top 3 rules are injected.
+Retrieval uses a **composite score**: BM25 keyword match × time decay × importance × outcome weight × reuse bonus × project affinity × folder affinity. Top 3 episodes + top 3 rules are injected.
 
 Score factors:
 - **BM25** — keyword relevance between query and episode text
@@ -150,6 +150,8 @@ Score factors:
 - **Outcome** — resolved errors score 1.2×, known failures 0.75× (still injected as negative examples)
 - **Reuse** — episodes used before score higher
 - **Project affinity** — same-project episodes score 1.3×, cross-project 0.85×
+- **Language affinity** — cross-language episodes score 0.3× (e.g. Python episode in a TypeScript project)
+- **Folder affinity** — episodes from the same directory tree score 1.1×, cross-folder 0.7×
 - **Confidence** — rules below 0.5 confidence are never injected
 
 ### Storage
@@ -166,8 +168,8 @@ Everything lives at `~/.claude-reforge/`:
 Database tables:
 
 ```sql
-episodes       task, error, tried_actions, solution, outcome, importance, hit_count
-semantic_facts project-scoped key/value facts
+episodes       task, error, tried_actions, solution, outcome, importance, hit_count, file_types, folders
+semantic_facts project-scoped key/value facts (primary_file_types, primary_folders, ...)
 rules          condition → action, confidence, hit_count
 injections     audit log of every memory injection (for stats)
 ```
