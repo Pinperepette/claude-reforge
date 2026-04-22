@@ -113,10 +113,16 @@ Every tool use (Edit, Write, Bash, Task...)
     └─ PreToolUse hook
          On first real tool use: builds a query from the task context,
          retrieves the most relevant past episodes and injects them (once per session).
+         Injection is capped: max 3 episodes + max 3 rules. No more.
 
-         On every tool use: runs prevention check — matches the current action
-         against tried_actions of past failures. If the action was tried before
-         and failed (bad_hit_count ≥ 2), injects a warning before execution:
+         On every tool use: runs the prevention engine.
+         Extracts the semantic intent of the current action (not the raw string):
+           "edit handler.js" → api:file
+           "git push --force" → git:force_push
+           "change function params" → code:signature_change
+
+         Matches intent against past failures (bad_hit_count ≥ 2).
+         If a strong match is found, injects exactly 1 warning before execution:
 
          [claude-reforge: prevention warning — failed 3 times]
            Error: Cannot read properties of undefined (reading 'map')
@@ -145,13 +151,13 @@ Session ends
 | **Episodic** | `task → error → solution → outcome` | Injected when task context matches |
 | **Semantic** | Stable project facts (file types, stack) | Injected at session start |
 | **Rules** | Patterns extracted from repeated errors | Injected at session start + on match |
-| **Prevention** | Failed `tried_actions` with repeat bad outcomes | Injected before each tool call if match found |
+| **Prevention** | Semantic intent of failed actions (`git:force_push`, `code:signature_change`, ...) | Max 1 warning per tool call, only on strong match |
 
 ### Retrieval
 
 No embeddings. No API calls. No external dependencies.
 
-Retrieval uses a **composite score**: BM25 keyword match × time decay × importance × outcome weight × reuse bonus × project affinity × folder affinity. Top 3 episodes + top 3 rules are injected.
+Retrieval uses a **composite score**: BM25 keyword match × time decay × importance × outcome weight × reuse bonus × project affinity × folder affinity. Injection is deliberately capped: **top 3 episodes + top 3 rules + max 1 prevention warning**. Less is more — too much context hurts more than it helps.
 
 Score factors:
 - **BM25** — keyword relevance between query and episode text
