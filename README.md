@@ -146,13 +146,13 @@ Retrieval uses a **composite score**: BM25 keyword match × time decay × import
 
 Score factors:
 - **BM25** — keyword relevance between query and episode text
-- **Time decay** — recent memories score higher (1.0 → 0.25 over 6 months)
-- **Outcome** — resolved errors score 1.2×, known failures 0.75× (still injected as negative examples)
-- **Reuse** — episodes used before score higher
-- **Project affinity** — same-project episodes score 1.3×, cross-project 0.85×
-- **Language affinity** — cross-language episodes score 0.3× (e.g. Python episode in a TypeScript project)
-- **Folder affinity** — episodes from the same directory tree score 1.1×, cross-folder 0.7×
-- **Confidence** — rules below 0.5 confidence are never injected
+- **Time decay** — `< 1w → 1.0` / `< 1mo → 0.85` / `< 3mo → 0.65` / `< 6mo → 0.45` / older → `0.25`
+- **Outcome** — resolved errors score `1.2×`, known failures `0.75×` (still injected as negative examples)
+- **Feedback loop** — every time a memory is shown and the session succeeds, `hit_count` increases and the episode scores higher on reuse; if the session fails after injection, `bad_hit_count` increases and the episode is penalized up to `0.3×` — the system learns what actually helps
+- **Project affinity** — same-project episodes score `1.3×`, cross-project `0.85×`
+- **Language affinity** — cross-language episodes score `0.3×` (e.g. a Python episode in a TypeScript project)
+- **Folder affinity** — episodes from the same directory tree score `1.1×`, cross-folder `0.7×`
+- **Confidence** — rules are scored as `success_rate × occurrence_count`; below `0.5` they are never injected; shown as `high confidence` (≥ 0.8) / `medium confidence` (≥ 0.6) / `emerging pattern` (< 0.6)
 
 ### Storage
 
