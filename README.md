@@ -32,6 +32,11 @@ Until now.
 
 **Claude Reforge breaks that loop.**
 
+This is not RAG.
+It does not retrieve knowledge.
+
+It learns from what actually happened and uses that to guide decisions and prevent repeated failures.
+
 ---
 
 This is not a prompt.
