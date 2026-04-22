@@ -56,7 +56,7 @@ It's experience.
 ## Quick Start
 
 ```bash
-npm install -g github:Pinperepette/claude-reforge
+npm install -g claude-reforge
 claude-reforge init
 ```
 
@@ -202,7 +202,7 @@ No native compilation. No build tools. No dependencies.
 Uses the SQLite engine built into Node.js itself.
 
 ```bash
-npm install -g github:Pinperepette/claude-reforge
+npm install -g claude-reforge
 claude-reforge init
 ```
 
