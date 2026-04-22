@@ -1,7 +1,7 @@
 # Claude Reforge
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Pinperepette/claude-reforge/main/assets/banner.png" alt="Claude Reforge" width="100%" />
+  <img src="./assets/banner.png" alt="Claude Reforge" width="100%" />
 </p>
 
 <p align="center">
