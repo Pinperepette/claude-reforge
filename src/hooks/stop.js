@@ -110,14 +110,22 @@ async function main() {
     session.outcome = outcome;
 
     // Check if we should save based on what happened
+    const db = getDb();
+
+    // Negative feedback: if session failed and memories were shown, penalize those episodes
+    if (outcome === 'failure' && session.injectedEpisodeIds && session.injectedEpisodeIds.length > 0) {
+      for (const id of session.injectedEpisodeIds) {
+        db.prepare('UPDATE episodes SET bad_hit_count = bad_hit_count + 1 WHERE id = ?').run(id);
+      }
+    }
+
     if (shouldSaveEpisode(session)) {
       const transcriptTask = readFirstUserMessage(transcript_path);
-      const task     = deriveTask(session, transcriptTask);
-      const error    = session.errors.length > 0 ? session.errors[0] : null;
-      const solution = deriveSolution(session, outcome);
+      const task      = deriveTask(session, transcriptTask);
+      const error     = session.errors.length > 0 ? session.errors[0] : null;
+      const solution  = deriveSolution(session, outcome);
+      const fileTypes = detectProjectStack(session);
       const importance = scoreEpisode({ ...session, solution, outcome });
-
-      const db = getDb();
 
       saveEpisode(db, {
         task,
@@ -128,16 +136,16 @@ async function main() {
         outcome,
         importance,
         projectId:    session.projectId,
-        triedActions: session.triedActions || []
+        triedActions: session.triedActions || [],
+        fileTypes
       });
 
       // Update project facts: file types used
-      const stack = detectProjectStack(session);
-      if (stack.length > 0) {
-        saveFact(db, 'primary_file_types', stack.join(', '), session.projectId);
+      if (fileTypes.length > 0) {
+        saveFact(db, 'primary_file_types', fileTypes.join(', '), session.projectId);
       }
 
-      // Run rule extraction after saving (throttled by internal checks)
+      // Run rule extraction after saving
       const epCount = db.prepare(
         'SELECT COUNT(*) as n FROM episodes WHERE project_id = ?'
       ).get(session.projectId)?.n || 0;

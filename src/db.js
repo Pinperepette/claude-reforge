@@ -83,6 +83,11 @@ function getDb() {
   const safeAlter = (sql) => { try { _db.exec(sql); } catch (_) {} };
   safeAlter('ALTER TABLE episodes ADD COLUMN hit_count INTEGER DEFAULT 0');
   safeAlter("ALTER TABLE episodes ADD COLUMN tried_actions TEXT DEFAULT '[]'");
+  safeAlter("ALTER TABLE episodes ADD COLUMN error_sig TEXT");
+  safeAlter("ALTER TABLE episodes ADD COLUMN seen_count INTEGER DEFAULT 1");
+  safeAlter("ALTER TABLE episodes ADD COLUMN file_types TEXT DEFAULT '[]'");
+  safeAlter("ALTER TABLE episodes ADD COLUMN bad_hit_count INTEGER DEFAULT 0");
+  safeAlter('CREATE INDEX IF NOT EXISTS idx_ep_error_sig ON episodes(error_sig, project_id)');
 
   return _db;
 }

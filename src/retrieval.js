@@ -35,7 +35,6 @@ function bm25Score(docKws, queryKws, avgDocLen = 25) {
   return score;
 }
 
-// Memories lose weight over time — old solutions may no longer apply
 function timeDecay(createdAtUnix) {
   const ageDays = (Date.now() / 1000 - createdAtUnix) / 86400;
   if (ageDays < 7)   return 1.0;
@@ -54,22 +53,43 @@ function timeAgo(unixSeconds) {
   return `${Math.floor(diff / 2592000)}mo ago`;
 }
 
-// Composite score: relevance × recency × importance × outcome × reuse × project affinity
-function compositeScore(bm25Raw, ep, isSameProject) {
-  const decay      = timeDecay(ep.created_at);
-  const outcomeW   = ep.outcome === 'success' ? 1.2 : 0.75;  // failures still inject as negative examples
-  const reuseBonus = ep.hit_count > 0 ? Math.min(1.3, 1 + ep.hit_count * 0.05) : 1.0;
-  const projectW   = isSameProject ? 1.3 : 0.85;
-  return bm25Raw * ep.importance * decay * outcomeW * reuseBonus * projectW;
-}
-
 function tryParse(json, fallback) {
   try { return JSON.parse(json || '[]') || fallback; } catch (_) { return fallback; }
+}
+
+// Composite score: relevance × recency × importance × outcome × reuse × project × feedback
+function compositeScore(bm25Raw, ep, isSameProject) {
+  const decay      = timeDecay(ep.created_at);
+  const outcomeW   = ep.outcome === 'success' ? 1.2 : 0.75;
+  const reuseBonus = ep.hit_count > 0 ? Math.min(1.3, 1 + ep.hit_count * 0.05) : 1.0;
+  const projectW   = isSameProject ? 1.3 : 0.85;
+  // Negative feedback: penalize episodes that were shown but didn't help
+  const totalHits  = (ep.hit_count || 0) + (ep.bad_hit_count || 0);
+  const badRate    = totalHits > 0 ? (ep.bad_hit_count || 0) / totalHits : 0;
+  const feedbackW  = Math.max(0.3, 1 - badRate * 0.7);
+  return bm25Raw * ep.importance * decay * outcomeW * reuseBonus * projectW * feedbackW;
+}
+
+// Language/extension affinity: penalize cross-language injections
+function languageScore(epFileTypes, projectTypes) {
+  if (projectTypes.size === 0 || epFileTypes.length === 0) return 1.0;
+  const overlap = epFileTypes.some(t => projectTypes.has(t));
+  return overlap ? 1.0 : 0.3;
+}
+
+function getProjectFileTypes(db, projectId) {
+  const fact = db.prepare(
+    "SELECT fact_value FROM semantic_facts WHERE fact_key = 'primary_file_types' AND project_id = ?"
+  ).get(projectId);
+  if (!fact) return new Set();
+  return new Set(fact.fact_value.split(',').map(s => s.trim()).filter(Boolean));
 }
 
 function retrieveRelevant(db, query, projectId, limit = 4) {
   const qKws = extractKeywords(query);
   if (qKws.length === 0) return { episodes: [], rules: [] };
+
+  const currentFileTypes = getProjectFileTypes(db, projectId);
 
   const episodes = db.prepare(`
     SELECT * FROM episodes
@@ -80,12 +100,14 @@ function retrieveRelevant(db, query, projectId, limit = 4) {
 
   const scoredEps = episodes
     .map(ep => {
-      const stored  = JSON.parse(ep.keywords || '[]');
-      const derived = extractKeywords([ep.task, ep.error, ep.solution].filter(Boolean).join(' '));
-      const kws     = [...new Set([...stored, ...derived])];
-      const bm25    = bm25Score(kws, qKws);
+      const stored   = tryParse(ep.keywords, []);
+      const derived  = extractKeywords([ep.task, ep.error, ep.solution].filter(Boolean).join(' '));
+      const kws      = [...new Set([...stored, ...derived])];
+      const bm25     = bm25Score(kws, qKws);
       if (bm25 === 0) return null;
-      return { ...ep, _score: compositeScore(bm25, ep, ep.project_id === projectId) };
+      const epTypes  = tryParse(ep.file_types, []);
+      const langW    = languageScore(epTypes, currentFileTypes);
+      return { ...ep, _score: compositeScore(bm25, ep, ep.project_id === projectId) * langW };
     })
     .filter(Boolean)
     .sort((a, b) => b._score - a._score)

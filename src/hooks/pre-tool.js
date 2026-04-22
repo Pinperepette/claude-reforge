@@ -104,6 +104,9 @@ async function main() {
           db.prepare('UPDATE episodes SET hit_count = hit_count + 1 WHERE id = ?').run(id);
         }
 
+        // Save injected IDs in session for negative feedback at Stop
+        session.injectedEpisodeIds = episodeIds;
+
         // Record injection event
         db.prepare(`
           INSERT INTO injections (session_id, project_id, episodes_hit, rules_hit, errors_in_eps, solutions_in_eps)
