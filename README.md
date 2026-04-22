@@ -5,7 +5,6 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/@ccplug/claude-reforge"><img src="https://img.shields.io/npm/v/@ccplug/claude-reforge?color=7c3aed&style=flat-square&label=npm" alt="npm" /></a>
   <img src="https://img.shields.io/badge/license-MIT-2563eb?style=flat-square" alt="license" />
   <img src="https://img.shields.io/badge/node-%3E%3D18-green?style=flat-square" alt="node" />
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey?style=flat-square" alt="platform" />
@@ -202,17 +201,8 @@ injections     audit log of every memory injection (for stats)
 No native compilation. No build tools. No dependencies.
 Uses the SQLite engine built into Node.js itself.
 
-### From GitHub
-
 ```bash
 npm install -g github:Pinperepette/claude-reforge
-claude-reforge init
-```
-
-### From npm
-
-```bash
-npm install -g @ccplug/claude-reforge
 claude-reforge init
 ```
 
