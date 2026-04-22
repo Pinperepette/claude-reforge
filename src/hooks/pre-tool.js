@@ -7,6 +7,7 @@
 
 const { getDb, logError, loadSession, saveSession } = require('../db.js');
 const { retrieveRelevant, formatMemoryContext, findPreventionMatches, formatPreventionWarning } = require('../retrieval.js');
+const { extractIntent } = require('../memory/intent.js');
 const crypto = require('crypto');
 
 // Tools that signal real work (not just navigation/inspection)
@@ -72,10 +73,11 @@ async function main() {
     const session = loadSession(session_id);
     if (!session) { exit('PreToolUse'); return; }
 
-    // Track this action
-    const hint = getTaskHint(tool_name, tool_input);
+    // Track this action with semantic intent
+    const hint   = getTaskHint(tool_name, tool_input);
+    const intent = extractIntent(tool_name, tool_input);
     if (hint) {
-      session.actions.push({ tool: tool_name, hint });
+      session.actions.push({ tool: tool_name, hint, intent });
       if (!session.task) session.task = hint;
     }
 

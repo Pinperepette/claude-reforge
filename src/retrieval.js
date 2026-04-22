@@ -100,7 +100,7 @@ function getProjectFolders(db, projectId) {
   return new Set(fact.fact_value.split(',').map(s => s.trim()).filter(Boolean));
 }
 
-function retrieveRelevant(db, query, projectId, limit = 4) {
+function retrieveRelevant(db, query, projectId, limit = 3) {
   const qKws = extractKeywords(query);
   if (qKws.length === 0) return { episodes: [], rules: [] };
 
@@ -227,7 +227,7 @@ function findPreventionMatches(db, actionHint, projectId) {
     })
     .filter(Boolean)
     .sort((a, b) => b._score - a._score)
-    .slice(0, 2);
+    .slice(0, 1);
 }
 
 function formatPreventionWarning(matches) {

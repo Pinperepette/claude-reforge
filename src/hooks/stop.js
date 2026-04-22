@@ -140,9 +140,12 @@ async function main() {
       const task      = deriveTask(session, transcriptTask);
       const error     = session.errors.length > 0 ? session.errors[0] : null;
       const solution  = deriveSolution(session, outcome);
-      const fileTypes = detectProjectStack(session);
-      const folders   = detectProjectFolders(session);
+      const fileTypes  = detectProjectStack(session);
+      const folders    = detectProjectFolders(session);
       const importance = scoreEpisode({ ...session, solution, outcome });
+
+      // Primary intent = first real action intent (extracted at PreToolUse time)
+      const intent = session.actions.find(a => a.intent)?.intent || null;
 
       saveEpisode(db, {
         task,
@@ -155,7 +158,8 @@ async function main() {
         projectId:    session.projectId,
         triedActions: session.triedActions || [],
         fileTypes,
-        folders
+        folders,
+        intent
       });
 
       // Update project facts: file types and folders used
