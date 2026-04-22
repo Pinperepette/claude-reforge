@@ -1,7 +1,5 @@
 # Claude Reforge
 
-![Claude Reforge](https://raw.githubusercontent.com/ccplug/claude-reforge/main/assets/banner.png)
-
 **Built specifically for Claude Code.**
 
 ---
