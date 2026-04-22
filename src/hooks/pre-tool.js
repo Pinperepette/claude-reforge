@@ -6,7 +6,7 @@
 // On the first "real" tool use of a session, retrieves and injects relevant memories.
 
 const { getDb, logError, loadSession, saveSession } = require('../db.js');
-const { retrieveRelevant, formatMemoryContext } = require('../retrieval.js');
+const { retrieveRelevant, formatMemoryContext, findPreventionMatches, formatPreventionWarning } = require('../retrieval.js');
 const crypto = require('crypto');
 
 // Tools that signal real work (not just navigation/inspection)
@@ -82,36 +82,46 @@ async function main() {
     // Track file changes (intent, before actual write)
     trackFiles(session, tool_name, tool_input);
 
-    // Inject memory once per session on the first real tool use
-    if (!session.injectedMemory && WORK_TOOLS.has(tool_name)) {
-      session.injectedMemory = true;
-
-      const query = [session.task, hint, cwd.split('/').pop()].filter(Boolean).join(' ');
+    if (WORK_TOOLS.has(tool_name)) {
       const db = getDb();
-      const result = retrieveRelevant(db, query, pid, 3);
-      const ctx = formatMemoryContext(result);
-      if (ctx) {
-        additionalContext = ctx;
 
-        // Track this injection for stats
-        const episodeIds = result.episodes.map(e => e.id);
-        const ruleIds    = result.rules.map(r => r.id);
-        const errorsHit  = result.episodes.filter(e => e.error).length;
-        const fixesHit   = result.episodes.filter(e => e.solution && e.outcome === 'success').length;
+      // One-time historical memory injection (first real tool use)
+      if (!session.injectedMemory) {
+        session.injectedMemory = true;
 
-        // Increment hit_count on retrieved episodes
-        for (const id of episodeIds) {
-          db.prepare('UPDATE episodes SET hit_count = hit_count + 1 WHERE id = ?').run(id);
+        const query = [session.task, hint, cwd.split('/').pop()].filter(Boolean).join(' ');
+        const result = retrieveRelevant(db, query, pid, 3);
+        const ctx = formatMemoryContext(result);
+        if (ctx) {
+          additionalContext = ctx;
+
+          const episodeIds = result.episodes.map(e => e.id);
+          const ruleIds    = result.rules.map(r => r.id);
+          const errorsHit  = result.episodes.filter(e => e.error).length;
+          const fixesHit   = result.episodes.filter(e => e.solution && e.outcome === 'success').length;
+
+          for (const id of episodeIds) {
+            db.prepare('UPDATE episodes SET hit_count = hit_count + 1 WHERE id = ?').run(id);
+          }
+
+          session.injectedEpisodeIds = episodeIds;
+
+          db.prepare(`
+            INSERT INTO injections (session_id, project_id, episodes_hit, rules_hit, errors_in_eps, solutions_in_eps)
+            VALUES (?, ?, ?, ?, ?, ?)
+          `).run(session_id, pid, JSON.stringify(episodeIds), JSON.stringify(ruleIds), errorsHit, fixesHit);
         }
+      }
 
-        // Save injected IDs in session for negative feedback at Stop
-        session.injectedEpisodeIds = episodeIds;
-
-        // Record injection event
-        db.prepare(`
-          INSERT INTO injections (session_id, project_id, episodes_hit, rules_hit, errors_in_eps, solutions_in_eps)
-          VALUES (?, ?, ?, ?, ?, ?)
-        `).run(session_id, pid, JSON.stringify(episodeIds), JSON.stringify(ruleIds), errorsHit, fixesHit);
+      // Prevention check: runs on every tool call, warns before known failures
+      if (hint) {
+        const preventionMatches = findPreventionMatches(db, hint, pid);
+        const preventionCtx = formatPreventionWarning(preventionMatches);
+        if (preventionCtx) {
+          additionalContext = additionalContext
+            ? additionalContext + '\n\n' + preventionCtx
+            : preventionCtx;
+        }
       }
     }
 

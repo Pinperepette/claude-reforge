@@ -109,11 +109,19 @@ Session opens
          Queries the database for rules and facts learned in this project.
          If found, injects them into Claude's context before anything else.
 
-First tool use (Edit, Write, Bash, Task...)
+Every tool use (Edit, Write, Bash, Task...)
     └─ PreToolUse hook
-         Builds a query from the current task context.
-         Retrieves the most relevant past episodes using BM25 keyword search.
-         Injects them as context — once per session, never repeated.
+         On first real tool use: builds a query from the task context,
+         retrieves the most relevant past episodes and injects them (once per session).
+
+         On every tool use: runs prevention check — matches the current action
+         against tried_actions of past failures. If the action was tried before
+         and failed (bad_hit_count ≥ 2), injects a warning before execution:
+
+         [claude-reforge: prevention warning — failed 3 times]
+           Error: Cannot read properties of undefined (reading 'map')
+           What failed: edited src/api/handler.js, ran: npm run build
+           What worked instead: Modified utils/safeMap.js
 
 During the session
     └─ PostToolUse hook (runs after every tool)
@@ -137,6 +145,7 @@ Session ends
 | **Episodic** | `task → error → solution → outcome` | Injected when task context matches |
 | **Semantic** | Stable project facts (file types, stack) | Injected at session start |
 | **Rules** | Patterns extracted from repeated errors | Injected at session start + on match |
+| **Prevention** | Failed `tried_actions` with repeat bad outcomes | Injected before each tool call if match found |
 
 ### Retrieval
 

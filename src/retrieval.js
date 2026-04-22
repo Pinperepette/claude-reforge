@@ -198,4 +198,60 @@ function formatMemoryContext(result) {
   return lines.join('\n').trim();
 }
 
-module.exports = { extractKeywords, bm25Score, retrieveRelevant, formatMemoryContext, timeAgo };
+// Prevention mode: match current action against past failed tried_actions
+function findPreventionMatches(db, actionHint, projectId) {
+  if (!actionHint || actionHint.length < 8) return [];
+  const qKws = extractKeywords(actionHint);
+  if (qKws.length === 0) return [];
+
+  const failedEps = db.prepare(`
+    SELECT * FROM episodes
+    WHERE outcome = 'failure'
+    AND tried_actions IS NOT NULL
+    AND tried_actions != '[]'
+    ORDER BY bad_hit_count DESC, created_at DESC
+    LIMIT 150
+  `).all();
+
+  return failedEps
+    .map(ep => {
+      const tried = tryParse(ep.tried_actions, []);
+      if (tried.length === 0) return null;
+      const kws   = extractKeywords([...tried, ep.task || '', ep.error || ''].join(' '));
+      const bm25  = bm25Score(kws, qKws);
+      if (bm25 < 0.3) return null;
+      const decay    = timeDecay(ep.created_at);
+      const projectW = ep.project_id === projectId ? 1.3 : 0.85;
+      const badW     = Math.min(2.0, 1 + (ep.bad_hit_count || 0) * 0.2);
+      return { ...ep, _score: bm25 * decay * projectW * badW, _tried: tried };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b._score - a._score)
+    .slice(0, 2);
+}
+
+function formatPreventionWarning(matches) {
+  if (matches.length === 0) return null;
+  const lines = [];
+  for (const ep of matches) {
+    const times  = ep.bad_hit_count || 1;
+    const strong = times >= 3;
+    const header = strong
+      ? `[claude-reforge: STRONG prevention warning — failed ${times} times]`
+      : `[claude-reforge: prevention warning — failed ${times} time(s)]`;
+    lines.push(header);
+    lines.push('');
+    if (ep.error)  lines.push(`  Error: ${ep.error.slice(0, 150)}`);
+    lines.push(`  What failed: ${ep._tried.slice(0, 2).join(', ').slice(0, 150)}`);
+    if (ep.solution) lines.push(`  What worked instead: ${ep.solution.slice(0, 150)}`);
+    lines.push('');
+  }
+  return lines.join('\n').trim();
+}
+
+module.exports = {
+  extractKeywords, bm25Score,
+  retrieveRelevant, formatMemoryContext,
+  findPreventionMatches, formatPreventionWarning,
+  timeAgo
+};
